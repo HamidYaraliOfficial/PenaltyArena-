@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>میدان پنالتی</title>
+<style>@font-face{font-family:Vazirmatn;src:url(fonts/vazir.woff2);font-weight:100 900}</style>
+<style>
+:root{--amb:#ffb340;--ink:#f3efe4;--blu:#4aa3ff;--pnl:rgba(6,14,16,.82);color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:#050b0a;color:var(--ink);font-family:Vazirmatn,Tahoma,sans-serif;overflow:hidden;user-select:none;touch-action:none}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none}
+#sb{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:var(--pnl);padding:8px 16px;border-radius:10px;font-weight:800;direction:ltr;white-space:nowrap}
+#sb .t{display:flex;flex-direction:column;gap:4px;align-items:center;font-size:13px}
+#sb .d{display:flex;gap:4px}#sb i{width:11px;height:11px;border-radius:50%;border:2px solid #7a8;background:transparent}
+#sb i.g{background:#5ee08a;border-color:#5ee08a}#sb i.m{background:#ff6a4a;border-color:#ff6a4a}
+#sb b{font-size:26px;min-width:20px;text-align:center}
+#msg{position:absolute;top:34%;width:100%;text-align:center;font-size:clamp(40px,10vw,96px);font-weight:800;color:var(--amb);text-shadow:0 4px 30px #000;opacity:0;transition:opacity .2s}
+#msg.on{opacity:1}
+#tip{position:absolute;bottom:calc(46px + env(safe-area-inset-bottom,0px));width:100%;text-align:center;font-size:14px;text-shadow:0 2px 8px #000}
+#pw{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;width:min(320px,70vw);height:12px;transform:translateX(-50%);background:#0008;border-radius:6px;overflow:hidden}
+#pw div{height:100%;width:0;background:linear-gradient(90deg,#5ee08a,#ffb340,#ff6a4a)}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#0e3a30cc,#030807f2);overflow:auto}
+#menu .box{width:min(460px,92vw);padding:24px 0;text-align:center}
+h1{margin:0;font-size:clamp(40px,9vw,64px);font-weight:800;color:var(--amb);line-height:1.1}
+.sub{margin:4px 0 18px;opacity:.75;font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}
+.row span{width:100%;font-size:13px;opacity:.7}
+button{font:inherit;color:var(--ink);background:#ffffff14;border:1.5px solid #ffffff30;border-radius:8px;padding:9px 14px;cursor:pointer}
+button:hover,button:focus-visible{border-color:var(--amb);outline:none}
+button.on{background:var(--amb);color:#201400;border-color:var(--amb);font-weight:800}
+.go{display:block;width:100%;font-size:19px;font-weight:800;padding:13px;margin:6px 0;background:#1d6b52;border-color:#2fa37f}
+.go:hover{background:#238566}
+.small{font-size:12px;opacity:.65;margin-top:14px;line-height:1.8}
+#end{display:none}
+</style></head><body>
+<div id="hud"><div id="sb"></div><div id="msg"></div><div id="tip"></div><div id="pw"><div></div></div></div>
+<div id="menu"><div class="box">
+<h1>میدان پنالتی</h1><p class="sub">Penalty Arena · نبرد ضربات پنالتی سه‌بعدی</p>
+<div id="end"><p id="endt" style="font-size:26px;font-weight:800;margin:0 0 10px"></p></div>
+<div class="row"><span>حالت بازی</span><span id="o0" style="width:auto;display:contents"></span></div>
+<div class="row" id="rd"><span>درجه سختی</span></div>
+<div class="row" id="rt"><span>محیط</span></div>
+<div class="row" id="rs"><span>صدا</span></div>
+<p class="small" id="st"></p>
+<p class="small">ضربه‌زن: ماوس یا لمس برای هدف‌گیری · نگه‌داشتن کلیک یا فاصله برای قدرت (قدرت زیاد = دقت کمتر) · Q و E برای کات توپ<br>دروازه‌بان: ←/→ شیرجه، ↑ برای توپ بالا، فاصله برای ایستادن؛ در موبایل روی نقطه‌ی مورد نظر بزنید<br>ساخته‌شده توسط حمید یارعلی · Created &amp; Developed by Hamid Yarali<br>Copyright © 2026 Hamid Yarali. All Rights Reserved.</p>
+</div></div>
+<script src="lib/three.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),rnd=a=>(Math.random()-.5)*2*a,gs=()=>(Math.random()+Math.random()+Math.random()-1.5)*1.5,cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+let cfg={diff:2,tod:0,mode:0,snd:1},stats={g:0,s:0,w:0,l:0,best:0};
+try{Object.assign(cfg,JSON.parse(localStorage.getItem('pa_cfg')||'{}'));Object.assign(stats,JSON.parse(localStorage.getItem('pa_st')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('pa_cfg',JSON.stringify(cfg));localStorage.setItem('pa_st',JSON.stringify(stats))}catch(e){}};
+const DN=['آسان','متوسط','سخت','حرفه‌ای','افسانه‌ای'],TN=['شب','غروب','روز'],MN=['مسابقه کامل','تمرین ضربه','چالش دروازه‌بان'];
+const D={sig:[2.2,1.3,.8,.45,.2],rea:[.4,.3,.22,.15,.08],rch:[.8,.9,1,1.1,1.2],dur:[.6,.5,.45,.4,.36],acc:[1.1,.8,.55,.35,.2],pw:[.55,.7,.8,.9,.95]};
+const TEAMS=[{n:'ققنوس‌ها',c:0x2f7fe0},{n:'پلنگ‌های خزر',c:0xf0a020}];
+/* ---------- audio ---------- */
+let AC,crowd;
+function au(){if(!cfg.snd)return null;if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();const b=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=AC.createBufferSource();s.buffer=b;s.loop=true;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=700;const g=AC.createGain();g.gain.value=.05;s.connect(f);f.connect(g);g.connect(AC.destination);s.start();crowd=g}if(AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,ty='sine',v=.3,f2){const a=au();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=ty;o.frequency.setValueAtTime(f,a.currentTime);if(f2)o.frequency.exponentialRampToValueAtTime(f2,a.currentTime+d);g.gain.setValueAtTime(v,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}
+const cheer=v=>{if(!au())return;crowd.gain.setTargetAtTime(v,AC.currentTime,.05);crowd.gain.setTargetAtTime(.05,AC.currentTime+1,.8)};
+const sfx={kick:()=>tone(160,.12,'triangle',.6,50),post:()=>{tone(900,.5,'sine',.35,700);tone(1500,.3,'square',.08)},net:()=>tone(120,.3,'sawtooth',.12,60),save:()=>tone(220,.1,'square',.3,90),whistle:()=>{tone(2700,.35,'sine',.18);tone(2900,.35,'sine',.1)}};
+/* ---------- scene ---------- */
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=.95;document.body.prepend(R.domElement);
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(55,1,.1,300);
+const rs=()=>{R.setSize(innerWidth,innerHeight);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix()};addEventListener('resize',rs);rs();
+const M=(c,r=.8,e)=>new THREE.MeshStandardMaterial({color:c,roughness:r,emissive:e||0});
+function cv(w,h,f){const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t}
+const gt=cv(512,512,(x,w,h)=>{for(let i=0;i<8;i++){x.fillStyle=i%2?'#2b7a3a':'#34903f';x.fillRect(0,i*64,w,64)}for(let i=0;i<9000;i++){x.fillStyle=`rgba(${rnd(1)>0?20:90},${120+Math.random()*80|0},50,.25)`;x.fillRect(Math.random()*w,Math.random()*h,2,5)}});
+gt.wrapS=gt.wrapT=THREE.RepeatWrapping;gt.repeat.set(4,4);
+const pitch=new THREE.Mesh(new THREE.PlaneGeometry(90,90),new THREE.MeshStandardMaterial({map:gt,roughness:1}));pitch.rotation.x=-Math.PI/2;pitch.position.z=15;pitch.receiveShadow=true;S.add(pitch);
+const lm=new THREE.MeshBasicMaterial({color:0xffffff});
+function ln(x1,z1,x2,z2){const l=Math.hypot(x2-x1,z2-z1),m=new THREE.Mesh(new THREE.PlaneGeometry(.12,l),lm);m.rotation.x=-Math.PI/2;m.rotation.z=Math.atan2(x2-x1,z2-z1)*-1+Math.PI;m.rotation.order='YXZ';m.rotation.set(-Math.PI/2,0,0);m.rotation.z=-Math.atan2(x2-x1,z2-z1)+Math.PI;m.position.set((x1+x2)/2,.02,(z1+z2)/2);S.add(m)}
+ln(-30,0,30,0);ln(-20.16,0,-20.16,16.5);ln(20.16,0,20.16,16.5);ln(-20.16,16.5,20.16,16.5);ln(-9.16,0,-9.16,5.5);ln(9.16,0,9.16,5.5);ln(-9.16,5.5,9.16,5.5);
+const gr=new THREE.Mesh(new THREE.PlaneGeometry(400,400),M(0x14301c,1));gr.rotation.x=-Math.PI/2;gr.position.y=-.05;S.add(gr);
+function flag(x,z){const p=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,1.5,6),M(0xeeeeee));p.position.set(x,.75,z);const f=new THREE.Mesh(new THREE.PlaneGeometry(.4,.3),new THREE.MeshBasicMaterial({color:0xffb340,side:2}));f.position.set(x+.2,1.35,z);S.add(p,f)}
+flag(-30,0);flag(30,0);
+function dugout(x){const g=new THREE.Group();const rf=new THREE.Mesh(new THREE.BoxGeometry(9,.1,2.2),M(0x1c2a33,.4));rf.position.set(0,2.2,0);g.add(rf);const bn=new THREE.Mesh(new THREE.BoxGeometry(8,.4,.7),M(0x333b40));bn.position.set(0,.5,.5);g.add(bn);const bk=new THREE.Mesh(new THREE.BoxGeometry(9,2.2,.1),new THREE.MeshStandardMaterial({color:0x7fb6d6,transparent:true,opacity:.25}));bk.position.set(0,1.1,-1);g.add(bk);g.position.set(x,0,20);g.rotation.y=x<0?Math.PI/2:-Math.PI/2;S.add(g)}
+dugout(-21);dugout(21);
+const tun=new THREE.Mesh(new THREE.BoxGeometry(6,3.2,4),M(0x0a0d10,1));tun.position.set(0,1.6,-9.5);S.add(tun);
+const spot=new THREE.Mesh(new THREE.CircleGeometry(.15,16),lm);spot.rotation.x=-Math.PI/2;spot.position.set(0,.03,11);S.add(spot);
+const mt=M(0xf4f4f4,.3);mt.metalness=.4;
+[-3.66,3.66].forEach(x=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,2.44,12),mt);p.position.set(x,1.22,0);p.castShadow=true;S.add(p)});
+const bar=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,7.32,12),mt);bar.rotation.z=Math.PI/2;bar.position.set(0,2.44,0);S.add(bar);
+const nm=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.35,side:2});
+function npl(w,h,x,y,z,ry,rx){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h,Math.round(w*4),Math.round(h*4)),nm);m.position.set(x,y,z);m.rotation.y=ry||0;m.rotation.x=rx||0;S.add(m)}
+npl(7.32,2.44,0,1.22,-2.1);npl(2.1,2.44,-3.66,1.22,-1.05,Math.PI/2);npl(2.1,2.44,3.66,1.22,-1.05,Math.PI/2);npl(7.32,2.1,0,2.44,-1.05,0,Math.PI/2);
+/* stands + crowd */
+const crowdG=new THREE.Group();S.add(crowdG);const cm=[];
+function stand(ox,oz,ax,az,L,nx,nz){const n=Math.floor(L/.7)*8,im=new THREE.InstancedMesh(new THREE.BoxGeometry(.45,.8,.4),new THREE.MeshLambertMaterial(),n),d=new THREE.Object3D(),col=new THREE.Color();let k=0;
+const pal=[0x2f7fe0,0xf0a020,0xe8e8e8,0x3a3f4a,0xc23b3b];
+for(let t=0;t<8;t++){const st=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(ax)*L+Math.abs(nx)*1.1+.01*Math.abs(az),.9*(t+1)+.4,Math.abs(az)*L+Math.abs(nz)*1.1+.01),M(0x2a2f33,1));st.position.set(ox+ax*L/2+nx*(t*1.1),(.9*(t+1)+.4)/2,oz+az*L/2+nz*(t*1.1));S.add(st);
+for(let i=0;i<Math.floor(L/.7);i++){d.position.set(ox+ax*i*.7+nx*(t*1.1),.9*(t+1)+.8,oz+az*i*.7+nz*(t*1.1));d.updateMatrix();im.setMatrixAt(k,d.matrix);col.set(pal[Math.random()*5|0]);im.setColorAt(k++,col)}}
+crowdG.add(im);const hm=new THREE.InstancedMesh(new THREE.SphereGeometry(.15,8,6),new THREE.MeshLambertMaterial(),k),m4=new THREE.Matrix4(),cc=new THREE.Color();for(let q=0;q<k;q++){im.getMatrixAt(q,m4);m4.setPosition(new THREE.Vector3().setFromMatrixPosition(m4).add(new THREE.Vector3(0,.55,0)));hm.setMatrixAt(q,m4);cc.set([0xe0ac86,0xc68863,0x8d5a3c,0xf1c9a5,0x5a3a26][Math.random()*5|0]);hm.setColorAt(q,cc)}crowdG.add(hm)}
+stand(-30,-9,1,0,60,0,-1);stand(-24,-4,0,1,50,-1,0);stand(24,-4,0,1,50,1,0);stand(-30,34,1,0,60,0,1);
+/* ads */
+const adT=(txt)=>cv(1024,64,(x,w,h)=>{x.fillStyle='#0b1b3a';x.fillRect(0,0,w,h);x.fillStyle='#ffb340';x.font='800 38px Vazirmatn,Tahoma,sans-serif';x.textAlign='center';x.fillText(txt,w/2,46)});
+[[0,.6,-7,0,'PENALTY ARENA · میدان پنالتی · حمید یارعلی'],[-22,.6,8,Math.PI/2,'Created & Developed by Hamid Yarali'],[22,.6,8,-Math.PI/2,'PENALTY ARENA · میدان پنالتی']].forEach(([x,y,z,r,t],i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(i?30:44,1.2),new THREE.MeshBasicMaterial({map:adT(t)}));m.position.set(x,y,z);m.rotation.y=r;S.add(m)});
+/* lights */
+const hemi=new THREE.HemisphereLight(0xaac4ff,0x203020,.5),sun=new THREE.DirectionalLight(0xffffff,1);sun.position.set(8,30,22);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-20,right:20,top:25,bottom:-15,far:80});S.add(hemi,sun);
+[[-26,-10],[26,-10],[-26,30],[26,30]].forEach(([x,z])=>{const t=new THREE.Mesh(new THREE.CylinderGeometry(.3,.5,30,8),M(0x555a60));t.position.set(x,15,z);S.add(t);const l=new THREE.Mesh(new THREE.BoxGeometry(4,2.4,.3),new THREE.MeshBasicMaterial({color:0xfff6d8}));l.position.set(x,30,z);l.lookAt(0,0,10);S.add(l);const gl=new THREE.PointLight(0xfff0d0,.35,90);gl.position.set(x*.8,28,z);S.add(gl)});
+function tod(i){const P=[[0x050b14,.35,.9,0xcfd8ff],[0x3a2a4a,.6,1.1,0xffb27a],[0x8ec3f0,.9,1.8,0xfff2d8]][i];S.background=new THREE.Color(P[0]);S.fog=new THREE.Fog(P[0],60,170);hemi.intensity=P[1];sun.intensity=P[2];sun.color.set(P[3])}
+/* players */
+function numTex(n,c){return cv(128,128,(x,w,h)=>{x.fillStyle='#fff';x.font='800 84px Vazirmatn,Tahoma,sans-serif';x.textAlign='center';x.fillText(n,64,96)})}
+function kitTex(c){return cv(256,64,(x,w,h)=>{x.fillStyle='#'+c.toString(16).padStart(6,'0');x.fillRect(0,0,w,h);for(let i=0;i<8;i++){x.fillStyle='rgba(255,255,255,'+(i%2?.14:0)+')';x.fillRect(i*32,0,32,h)}x.fillStyle='rgba(0,0,0,.12)';x.fillRect(0,0,w,6)})}
+function faceTex(skin,brow){const sc='#'+skin.toString(16).padStart(6,'0');return cv(256,256,(x,w,h)=>{x.fillStyle=sc;x.fillRect(0,0,w,h);const gr=x.createRadialGradient(64,120,10,64,130,70);gr.addColorStop(0,'rgba(255,200,170,.18)');gr.addColorStop(1,'rgba(0,0,0,.18)');x.fillStyle=gr;x.fillRect(0,0,w,h);
+[-13,13].forEach(d=>{x.fillStyle='#f4f0ea';x.beginPath();x.ellipse(64+d,116,7,3.8,0,0,7);x.fill();x.fillStyle='#3a2415';x.beginPath();x.arc(64+d,116,3.2,0,7);x.fill();x.fillStyle='#000';x.beginPath();x.arc(64+d,116,1.4,0,7);x.fill();x.strokeStyle=brow;x.lineWidth=2.6;x.beginPath();x.moveTo(64+d-8,104);x.quadraticCurveTo(64+d,99,64+d+8,103);x.stroke();x.strokeStyle='rgba(60,30,20,.35)';x.lineWidth=1.2;x.beginPath();x.moveTo(64+d-7,121);x.quadraticCurveTo(64+d,124,64+d+7,121);x.stroke()});
+x.strokeStyle='rgba(70,35,25,.35)';x.lineWidth=2;x.beginPath();x.moveTo(62,120);x.lineTo(60,140);x.lineTo(66,141);x.stroke();x.strokeStyle='#8a3a38';x.lineWidth=2.6;x.beginPath();x.moveTo(52,158);x.quadraticCurveTo(64,164,76,158);x.stroke();x.strokeStyle='rgba(60,25,20,.5)';x.lineWidth=1.2;x.beginPath();x.moveTo(54,157);x.lineTo(74,157);x.stroke()})}
+function mk(col,gk,num,skin){skin=skin||0xc98f68;const g=new THREE.Group(),L2=(c,r)=>{const m=M(c,r);m.side=2;return m},dark=skin<0xa00000||skin==0x8d5a3c;
+const sk=L2(skin,.55),ku=new THREE.MeshStandardMaterial({map:kitTex(gk?0x2fbf5a:col),roughness:.6,side:2}),sh=L2(gk?0x1a1a1a:0xf4f4f4,.6),so=L2(gk?0x242424:col,.7),bk=M(0x0d0d0d,.3),hr=M(dark?0x0f0a08:0x3a2614,.9),gl=M(0xffe14a,.5),
+lt=(p,m,x,y,z,sz)=>{const e=new THREE.Mesh(new THREE.LatheGeometry(p.map(a=>new THREE.Vector2(a[0],a[1])),18),m);e.position.set(x,y,z);if(sz)e.scale.z=sz;e.castShadow=true;return e},
+sp=(r,m,x,y,z,sx,sy,sz)=>{const e=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),m);e.position.set(x,y,z);e.scale.set(sx||1,sy||1,sz||1);e.castShadow=true;return e};
+g.add(lt([[0,0],[.17,0],[.2,.12],[.215,.3],[.26,.48],[.29,.6],[.22,.69],[.09,.73],[0,.73]],ku,0,.98,0,.62));
+g.add(lt([[0,0],[.2,0],[.21,.12],[.2,.16],[0,.16]],sh,0,.88,0,.7));
+const col2=new THREE.Mesh(new THREE.TorusGeometry(.085,.018,8,18),sh);col2.position.set(0,1.69,0);col2.rotation.x=Math.PI/2;g.add(col2);
+g.add(lt([[0,0],[.058,0],[.062,.1],[.05,.14],[0,.14]],sk,0,1.62,0));
+const head=sp(.11,new THREE.MeshStandardMaterial({map:faceTex(skin,dark?'#0a0605':'#2a1a10'),roughness:.55}),0,1.8,.005,1,1.2,1.08);g.add(head);
+
+const h1=new THREE.Mesh(new THREE.SphereGeometry(.117,20,14,0,Math.PI*2,0,1.2),hr);h1.position.set(0,1.82,-.004);h1.scale.set(1,1.2,1.1);const h2=new THREE.Mesh(new THREE.SphereGeometry(.118,20,14,Math.PI/2+.85,Math.PI*2-1.7,0,2.05),hr);h2.position.copy(h1.position);h2.scale.copy(h1.scale);g.add(h1,h2,sp(.02,sk,-.112,1.79,0,.6,1.4,1),sp(.02,sk,.112,1.79,0,.6,1.4,1));
+const bp=new THREE.Mesh(new THREE.PlaneGeometry(.28,.28),new THREE.MeshBasicMaterial({map:numTex(num||9,gk?0x1f8f46:col),transparent:true}));bp.position.set(0,1.33,-.185);bp.rotation.y=Math.PI;g.add(bp);
+const leg=x=>{const p=new THREE.Group();p.position.set(x,.9,0);p.add(lt([[0,0],[.085,0],[.1,-.1],[.093,-.3],[.072,-.43],[0,-.43]],sk,0,0,0),lt([[0,.02],[.108,.02],[.118,-.12],[.122,-.24],[0,-.24]],sh,0,0,0));
+const K=new THREE.Group();K.position.y=-.43;K.add(sp(.07,sk,0,0,.005),lt([[0,0],[.066,0],[.072,-.1],[.056,-.3],[.05,-.4],[0,-.4]],so,0,0,0),sp(.082,bk,0,-.43,.05,.9,.55,1.7),lt([[0,0],[.068,0],[.066,-.05],[0,-.05]],sh,0,-.28,0));p.add(K);p.K=K;g.add(p);return p},
+arm=x=>{const p=new THREE.Group();p.position.set(x,1.52,0);p.add(sp(.065,ku,0,0,0),lt([[0,0],[.058,0],[.064,-.08],[.055,-.22],[.047,-.3],[0,-.3]],ku,0,0,0));
+const E=new THREE.Group();E.position.y=-.3;E.add(lt([[0,0],[.046,0],[.05,-.1],[.04,-.25],[.034,-.28],[0,-.28]],gk?ku:sk,0,0,0),sp(gk?.075:.043,gk?gl:sk,0,-.33,.005,1,gk?1.1:1.5,.8));p.add(E);p.E=E;p.rotation.z=x<0?.07:-.07;g.add(p);return p};
+g.L=leg(-.115);g.R=leg(.115);g.A=arm(-.37);g.B=arm(.37);S.add(g);return g}
+const kicker=mk(TEAMS[0].c,0,9),kicker2=mk(TEAMS[1].c,0,10,0x8d5a3c),keeper=mk(0,true,1,0xb07a54);
+const bt=cv(128,128,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#222';for(let i=0;i<14;i++){x.beginPath();x.arc(Math.random()*w,Math.random()*h,9+Math.random()*8,0,7);x.fill()}});
+const ball=new THREE.Mesh(new THREE.SphereGeometry(.11,24,18),new THREE.MeshStandardMaterial({map:bt,roughness:.5}));ball.castShadow=true;S.add(ball);
+const cross=new THREE.Mesh(new THREE.RingGeometry(.14,.2,28),new THREE.MeshBasicMaterial({color:0xffb340,side:2,depthTest:false}));cross.renderOrder=9;S.add(cross);
+/* physics */
+const B={x:0,y:.11,z:11,vx:0,vy:0,vz:0,wy:0},DR=.0035,MG=.012,G=9.81;
+function stp(b,dt){const sp=Math.hypot(b.vx,b.vy,b.vz);b.vx+=(-DR*sp*b.vx+MG*b.wy*b.vz)*dt;b.vy+=(-G-DR*sp*b.vy)*dt;b.vz+=(-DR*sp*b.vz-MG*b.wy*b.vx)*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;if(b.y<.11){b.y=.11;b.vy*=-.55;b.vx*=.88;b.vz*=.88;if(Math.abs(b.vy)<.5)b.vy=0}}
+function sim(b0){const b={...b0};let t=0;while(b.z>0&&t<3){stp(b,.01);t+=.01}return{x:b.x,y:b.y,t}}
+function launch(tx,ty,pw,wy){const sp=15+17*pw;let ax=tx,ay=ty;let v;for(let k=0;k<3;k++){const dx=ax,dz=-11,hd=Math.hypot(dx,dz),T=hd/(sp*.95);v={x:dx/T,z:dz/T,y:(ay-.11+.5*G*T*T)/T};const r=sim({x:0,y:.11,z:11,vx:v.x,vy:v.y,vz:v.z,wy:0});ax+=tx-r.x;ay+=ty-r.y}
+B.vx=v.x;B.vy=v.y;B.vz=v.z;B.wy=wy}
+/* game state */
+let st='menu',tm=0,n=0,role='kick',team=0,goals=[0,0],marks=[[],[]],shot=null,dive=null,plan=null,res=null,slow=1,slowT=0,curve=0,charge=0,charging=false,kx=0,over=false,saves=0,cam='kick';
+const aim={x:0,y:1.1},camP=new THREE.Vector3(0,1.8,15.6),look=new THREE.Vector3(0,1.1,2);
+const tip=t=>$('#tip').textContent=t,msg=(t)=>{const m=$('#msg');m.textContent=t||'';m.classList.toggle('on',!!t)};
+function hud(){const dots=i=>{let s='';const k=Math.max(5,marks[i].length);for(let j=0;j<k;j++)s+=`<i class="${marks[i][j]===true?'g':marks[i][j]===false?'m':''}"></i>`;return s};
+if(cfg.mode==0)$('#sb').innerHTML=`<div class="t">${TEAMS[0].n}<div class="d">${dots(0)}</div></div><b>${goals[0]}</b><span>:</span><b>${goals[1]}</b><div class="t">${TEAMS[1].n}<div class="d">${dots(1)}</div></div>`;
+else if(cfg.mode==1)$('#sb').innerHTML=`<div class="t">گل‌ها</div><b>${stats.g}</b>`;
+else $('#sb').innerHTML=`<div class="t">مهار شده از ${Math.min(n+1,10)}/10</div><b>${saves}</b><div class="t">رکورد</div><b>${stats.best}</b>`}
+function newGame(){au();cfg.mode=cfg.mode;n=0;goals=[0,0];marks=[[],[]];saves=0;over=false;$('#menu').style.display='none';sfx.whistle();begin()}
+function begin(){team=cfg.mode==0?n%2:cfg.mode==1?0:1;role=cfg.mode==0?(team==0?'kick':'keep'):cfg.mode==1?'kick':'keep';
+Object.assign(B,{x:0,y:.11,z:11,vx:0,vy:0,vz:0,wy:0});dive=null;plan=null;res=null;shot=null;curve=0;charge=0;charging=false;tm=0;cam=role;msg('');
+const kk=team==0?kicker:kicker2;kicker.visible=kicker2.visible=false;kk.visible=true;kk.cur=kk;window.KK=kk;kk.position.set(1.6,0,13.4);kk.rotation.set(0,Math.PI,0);
+keeper.position.set(0,0,.3);keeper.rotation.set(0,0,0);st=role=='kick'?'aim':'wait';
+tip(role=='kick'?'هدف را با ماوس یا لمس انتخاب کن و برای شوت، کلیک را نگه دار و رها کن':'ببین کجا می‌زند! ←/→ شیرجه، ↑ بالا، فاصله ایستادن');hud()}
+function aiShot(){const d=cfg.diff,sx=Math.random()<.5?-1:1;return{tx:cl(sx*(1.8+Math.random()*1.7)+gs()*D.acc[d],-4.6,4.6),ty:cl((Math.random()<.5?.45:2)+gs()*D.acc[d]*.5,.15,3.2),pw:cl(D.pw[d]+rnd(.06),.4,1),c:0}}
+function run(s){shot=s;st='run';tm=0}
+function kick(){const s=shot;launch(s.tx,s.ty,s.pw,-s.c*50);B.wy=-s.c*50;sfx.kick();st='fly';tm=0;if(role=='kick'){const d=cfg.diff,c=sim(B);plan={t:D.rea[d],x:cl(c.x+gs()*D.sig[d],-3.6,3.6),y:cl(c.y+gs()*D.sig[d]*.6,.5,2.1)}}}
+function startDive(x,y){if(dive)return;const d=cfg.diff;dive={t:0,dur:role=='kick'?D.dur[d]:.42,fx:kp().x,fy:kp().y,tx:x,ty:y};}
+const kp=()=>{if(!dive)return{x:Math.sin(performance.now()/500)*.15,y:.9};const p=Math.min(1,dive.t/dive.dur),e=1-(1-p)*(1-p);return{x:dive.fx+(dive.tx-dive.fx)*e,y:dive.fy+(dive.ty-dive.fy)*e}};
+function resolve(){const d=cfg.diff,x=B.x,y=B.y;let r='miss';
+const dp=Math.min(Math.abs(Math.hypot(Math.abs(x)-3.66,Math.min(0,y-2.44)))*(y<=2.5?1:1e3),9),dx=Math.hypot(Math.abs(x)-3.66,y>2.5?9:0),db=y>2.44-.05&&Math.abs(x)<3.7?Math.abs(y-2.44):9;
+if((Math.abs(Math.abs(x)-3.66)<.17&&y<2.6)||(Math.abs(y-2.44)<.17&&Math.abs(x)<3.7)){r='post';sfx.post();if(Math.random()<.35){r='goal';B.vz*=.4;B.vx*=-.3}else{B.vz=Math.abs(B.vz)*.45;B.vx*=.6}}
+else if(Math.abs(x)<3.66&&y<2.44){const k=kp(),reach=role=='kick'?D.rch[d]:1.05;if(Math.hypot(x-k.x,y-k.y)<reach){r='save';sfx.save();B.vz=Math.abs(B.vz)*.3;B.vx+=rnd(4);B.vy=Math.abs(B.vy)*.4+2}else r='goal'}
+if(r=='goal')sfx.net();res=r;st='after';tm=0;slow=.35;slowT=1.1;if(r=='goal'){cheer(.45);msg('گل!')}else if(r=='save'){cheer(.25);msg('مهار شد!')}else{cheer(.12);msg(r=='post'?'تیرک!':'بیرون!')}
+if(role=='keep'&&cam=='keep'){}cam=role=='kick'&&r=='goal'?'goal':role}
+function finish(){const goal=res=='goal';if(cfg.mode==0){marks[team].push(goal);if(goal)goals[team]++;if(role=='kick'){goal?stats.g++:0}else if(!goal)stats.s++;n++;
+const ka=marks[0].length,kb=marks[1].length,ra=Math.max(0,5-ka),rb=Math.max(0,5-kb);let w=-1;
+if(ka<=5&&kb<=5){if(goals[0]>goals[1]+rb)w=0;else if(goals[1]>goals[0]+ra)w=1}if(w<0&&ka==kb&&ka>=5&&goals[0]!=goals[1])w=goals[0]>goals[1]?0:1;
+if(w>=0){if(w==0)stats.w++;else stats.l++;return end(w==0?`پیروزی ${TEAMS[0].n}! ${goals[0]}–${goals[1]}`:`${TEAMS[1].n} برد · ${goals[1]}–${goals[0]}`)}if(ka==kb&&ka>=5&&goals[0]==goals[1])tip('ضربات تک‌به‌تک!')}
+else if(cfg.mode==1){if(goal)stats.g++;n++}else{if(!goal){saves++;stats.s++}n++;if(n>=10){stats.best=Math.max(stats.best,saves);return end(`${saves} مهار از ۱۰ ضربه`)}}
+hud();begin()}
+function end(t){save();st='menu';over=true;$('#end').style.display='block';$('#endt').textContent=t;$('#menu').style.display='flex';msg('');draw();sfx.whistle()}
+/* input */
+const ray=new THREE.Raycaster(),mv=new THREE.Vector2();
+function aimAt(e){mv.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight*2-1));ray.setFromCamera(mv,C);const d=ray.ray.direction,o=ray.ray.origin,t=-o.z/d.z;aim.x=cl(o.x+d.x*t,-4.4,4.4);aim.y=cl(o.y+d.y*t,.15,3.1)}
+addEventListener('pointermove',e=>{if(st=='aim')aimAt(e)});
+addEventListener('pointerdown',e=>{if(e.target.closest('#menu'))return;au();if(st=='aim'){aimAt(e);charging=true;charge=0}else if(role=='keep'&&['wait','run','fly'].includes(st)&&!dive){startDive(-(e.clientX/innerWidth-.5)*7.4,cl((1-e.clientY/innerHeight)*3.4,.5,2.1))}});
+addEventListener('pointerup',fire);
+function fire(){if(st=='aim'&&charging){charging=false;const p=Math.max(.25,charge),sd=.1+Math.max(0,p-.7)*2.5;run({tx:aim.x+gs()*sd,ty:cl(aim.y+gs()*sd*.8,.1,3.4),pw:p,c:curve})}}
+addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key;
+if(st=='aim'){if(k==' '){charging=true;charge=0;e.preventDefault()}if(k=='q'||k=='Q')curve=Math.max(-1,curve-.5);if(k=='e'||k=='E')curve=Math.min(1,curve+.5);if(k=='ArrowLeft')aim.x=cl(aim.x-.4,-4.4,4.4);if(k=='ArrowRight')aim.x=cl(aim.x+.4,-4.4,4.4);if(k=='ArrowUp')aim.y=cl(aim.y+.3,.15,3.1);if(k=='ArrowDown')aim.y=cl(aim.y-.3,.15,3.1)}
+else if(role=='keep'&&['wait','run','fly'].includes(st)&&!dive){const hi=e.shiftKey?1.9:.8;if(k=='ArrowLeft')startDive(2.7,.8);else if(k=='ArrowRight')startDive(-2.7,.8);else if(k=='ArrowUp')startDive(0,2)||0;else if(k==' ')startDive(0,1.2)}});
+addEventListener('keyup',e=>{if(e.key==' ')fire()});
+addEventListener('keydown',e=>{if(role=='keep'&&!dive&&st!='aim'&&e.key=='ArrowUp'){}});
+/* loop */
+function update(dt,raw){tm+=dt;const kk=window.KK;
+if(st=='aim'){if(charging)charge=Math.min(1,charge+dt/1.1);$('#pw div').style.width=charge*100+'%';cross.visible=true;cross.position.set(aim.x,aim.y,.05);tip(`کات: ${curve==0?'مستقیم':curve<0?'◄ چپ':'راست ►'} (Q/E) · هدف را بگیر و نگه دار`)}else{cross.visible=false;if(st!='aim')$('#pw div').style.width='0'}
+if(st=='wait'&&tm>1.4)run(aiShot());
+if(st=='run'||st=='wait'){const T=role=='kick'?.7:.95,p=cl(tm/T,0,1);if(st=='run'){kk.position.set(1.6-1.1*p,0,13.4-2*p);kk.rotation.y=Math.PI+.35*(1-p);kk.L.rotation.x=Math.sin(tm*14)*.8;kk.L.K.rotation.x=Math.max(0,-Math.sin(tm*14))*1.1;kk.R.K.rotation.x=Math.max(0,Math.sin(tm*14))*1.1;kk.A.E.rotation.x=-.9;kk.B.E.rotation.x=-.9;kk.R.rotation.x=-Math.sin(tm*14)*.8;kk.A.rotation.x=-Math.sin(tm*14)*.6;kk.B.rotation.x=Math.sin(tm*14)*.6;if(tm>=T)kick()}}
+if(st=='fly'||st=='after'){const sub=4;for(let i=0;i<sub;i++){const z0=B.z;stp(B,dt/sub);if(st=='fly'&&z0>0&&B.z<=0)resolve();if(B.z<-2.05){B.z=-2.05;B.vz*=-.12;B.vx*=.4;B.vy*=.4}if(res=='goal'&&Math.abs(B.x)>3.6&&B.z<0){B.x=Math.sign(B.x)*3.6;B.vx*=-.2}}
+if(st=='fly'){kk.R.rotation.x=Math.max(-.9,Math.min(1.3,(.9-tm*6)*-1.4));kk.R.K.rotation.x=Math.max(0,.9-tm*5);if(plan&&tm>=plan.t&&!dive)startDive(plan.x,plan.y);if(tm>3)resolve()}else{kk.R.rotation.x*=.9;if(tm>1.9)finish()}}
+if(dive)dive.t+=dt;const k=kp();keeper.position.set(k.x,Math.max(0,k.y-.9),.3);keeper.rotation.z=dive?-cl(k.x*.33,-1.1,1.1):0;keeper.A.rotation.z=dive?-2.6*Math.sign(k.x||1)*(Math.min(1,dive.t/dive.dur)):0;keeper.B.rotation.z=keeper.A.rotation.z;if(!dive){keeper.A.rotation.z=-.9;keeper.B.rotation.z=.9}
+ball.position.set(B.x,B.y,B.z);ball.rotation.x-=B.vz*dt*3;ball.rotation.y+=B.wy*dt*.2;
+if(slowT>0){slowT-=raw;if(slowT<=0)slow=1}}
+function draw(){}
+let last=performance.now();
+function loop(now){const raw=Math.min(.05,(now-last)/1000);last=now;if(st!='menu')update(raw*slow,raw);
+let tp,lk;if(cam=='keep'){tp=new THREE.Vector3(0,2.1,-4.2);lk=new THREE.Vector3(0,1.1,9)}else if(cam=='goal'){tp=new THREE.Vector3(5,1.7,-3.6);lk=new THREE.Vector3(B.x,B.y+.4,B.z)}else{tp=new THREE.Vector3(aim.x*.15,2,16.8);lk=new THREE.Vector3(0,1.2,2);if(st=='fly'||st=='after')lk.lerp(new THREE.Vector3(B.x,B.y+.5,B.z),.35)}
+if(window.DBG){tp=DBG.p;lk=DBG.l}const a=1-Math.exp(-raw*3);camP.lerp(tp,a);look.lerp(lk,a*1.3);C.position.copy(camP);C.lookAt(look);
+crowdG.position.y=Math.max(0,Math.sin(now/90)*.12*(st=='after'&&res=='goal'?1:0));
+R.render(S,C);requestAnimationFrame(loop)}
+/* menu */
+function chips(id,arr,key,cb){const r=$(id);r.querySelectorAll('button').forEach(b=>b.remove());arr.forEach((t,i)=>{const b=document.createElement('button');b.textContent=t;b.className=cfg[key]==i?'on':'';b.onclick=()=>{cfg[key]=i;save();cb&&cb();ui()};r.appendChild(b)})}
+function ui(){const o=$('#o0');o.innerHTML='';MN.forEach((t,i)=>{const b=document.createElement('button');b.className='go'+(cfg.mode==i?'':'');b.textContent=(cfg.mode==i?'▶ ':'')+t;b.onclick=()=>{cfg.mode=i;save();newGame()};o.appendChild(b)});o.style.cssText='display:block;width:100%';
+chips('#rd',DN,'diff');chips('#rt',TN,'tod',()=>tod(cfg.tod));chips('#rs',['خاموش','روشن'],'snd');$('#st').textContent=`گل‌ها ${stats.g} · مهارها ${stats.s} · برد ${stats.w} · باخت ${stats.l} · رکورد چالش ${stats.best}/10`}
+tod(cfg.tod);ui();hud();[kicker,kicker2].forEach(k=>k.visible=false);window.KK=kicker;kicker.visible=true;kicker.position.set(1.6,0,15.5);kicker.rotation.y=Math.PI;
+requestAnimationFrame(loop);
+</script></body></html>

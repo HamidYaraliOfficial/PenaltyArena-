@@ -1,0 +1,72 @@
+{
+  "name": "penalty-arena",
+  "version": "1.0.0",
+  "description": "Penalty Arena - 3D penalty shootout game",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "keywords": [],
+  "author": "Hamid Yarali <https://github.com/HamidYaraliOfficial>",
+  "license": "SEE LICENSE IN LICENSE",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "three": "^0.128.0",
+    "vazirmatn": "^33.0.3"
+  },
+  "productName": "PenaltyArena",
+  "build": {
+    "appId": "com.hamidyarali.penaltyarena",
+    "productName": "PenaltyArena",
+    "copyright": "Copyright © 2026 Hamid Yarali. All Rights Reserved.",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "src/**/*",
+      "build/icon.ico",
+      "build/icon.png",
+      "LICENSE"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Penalty Arena",
+      "uninstallDisplayName": "Penalty Arena",
+      "deleteAppDataOnUninstall": true,
+      "license": "LICENSE",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "PenaltyArena-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "PenaltyArena-Portable-${version}.${ext}"
+    }
+  }
+}
